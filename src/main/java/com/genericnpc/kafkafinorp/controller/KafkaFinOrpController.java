@@ -1,8 +1,12 @@
 package com.genericnpc.kafkafinorp.controller;
 
 import com.example.Sensor;
+import com.genericnpc.kafkafinorp.dataaccess.SensorDab;
+import com.genericnpc.kafkafinorp.repository.SensorRepository;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.Message;
@@ -28,6 +32,11 @@ public class KafkaFinOrpController {
     BlockingQueue<Sensor> unbounded = new LinkedBlockingQueue<>();
     private final EmitterProcessor<Message<Sensor>> processor = EmitterProcessor.create();
 
+    @Autowired
+    private StreamBridge streamBridge;
+
+    @Autowired
+    private SensorRepository sensorRepository;
 
     private Sensor randomSensor() {
         Sensor sensor = new Sensor();
@@ -49,6 +58,16 @@ public class KafkaFinOrpController {
         return "Sent mock event";
     }
 
+    @RequestMapping(value={"/sensor"})
+    @ResponseBody
+    public List<SensorDab> getSensor(){
+
+        System.out.println("Hello WOrld");
+        System.out.println(sensorRepository.findAll());
+        System.out.println(sensorRepository.findAll().get(0).getId());
+        return sensorRepository.findAll();
+    }
+
     @Bean
     public Supplier<Flux<Message<Sensor>>> supplier() {
         return () -> processor;
@@ -58,6 +77,16 @@ public class KafkaFinOrpController {
     public Consumer<Message<List<Sensor>>> consumer() {
         return input -> {
             System.out.println(input.getPayload().size());
+
+            for(var i = 0; i < input.getPayload().size(); i++){
+                if(i==3){
+                    streamBridge.send("NOWHEREFAILPLSSS", input.getPayload().get(i));
+
+                }else{
+                    streamBridge.send("output-out-0", input.getPayload().get(i));
+                }
+
+            }
         };
     }
 
